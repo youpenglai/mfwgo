@@ -7,32 +7,33 @@ import (
 
 const (
 	baseUrl  = "http://127.0.0.1:8500"
-	localUrl = "http://127.0.0.1"
+	localUrl = "127.0.0.1"
 )
 
-type ConsulService struct {
+const (
+	HEALTH_NIL  = 0
+	HEALTH_HTTP = 1
+	HEALTH_GRPC = 2
+)
+
+type ServiceRegisterInfo struct {
+	ID    string      `json:"ID"`
+	Name  string      `json:"Name"`
+	Port  int64       `json:"Port"`
+	Tags  []string    `json:"Tags"`
+	Check interface{} `json:"Check"`
 }
 
-type ServiceRegistration struct {
-	ID    string        `json:"ID"`
-	Name  string        `json:"Name"`
-	Port  int64         `json:"Port"`
-	Tags  []string      `json:"Tags"`
-	Check RegisterCheck `json:"Check"`
-}
-
-type RegisterCheck struct {
+type HTTPCheck struct {
 	DeregisterCriticalServiceAfter string `json:"DeregisterCriticalServiceAfter"`
 	HTTP                           string `json:"HTTP"`
 	Interval                       string `json:"Interval"`
 }
 
-type ServiceInfo struct {
-	ID      string   `json:"ID"`
-	Name    string   `json:"Name"`
-	Address string   `json:"Address"`
-	Port    int64    `json:"Port"`
-	Tags    []string `json:"Tags"`
+type GRPCCheck struct {
+	DeregisterCriticalServiceAfter string `json:"DeregisterCriticalServiceAfter"`
+	GRPC                           string `json:"GRPC"`
+	Interval                       string `json:"Interval"`
 }
 
 type ServiceHealthInfo struct {
@@ -58,26 +59,40 @@ type ConsulServiceInfo struct {
 	Tags []string `json:"Tags"`
 }
 
+type ConsulService struct{}
+
 func NewConsulService() *ConsulService {
 	return &ConsulService{}
 }
 
-func (this *ConsulService) Register(serviceName string, port int64) error {
+func (this *ConsulService) Register(name string, port int64, healthType string) error {
 	url := fmt.Sprintf("%s/v1/agent/service/register", baseUrl)
 	headers := map[string]string{
 		"Content-Type": "application/json",
 	}
 
-	register := ServiceRegistration{
-		Name: serviceName,
-		Port: port,
-		ID:   fmt.Sprintf("%v-%v", serviceName, port),
-		Tags: []string{"go"},
-		Check: RegisterCheck{
+	var check interface{}
+	switch healthType {
+	case "http":
+		check = HTTPCheck{
 			DeregisterCriticalServiceAfter: "10m",
-			HTTP:                           fmt.Sprintf("%s:%d/health", localUrl, port),
+			HTTP:                           fmt.Sprintf("http://%s:%d/health", localUrl, port),
 			Interval:                       "30s",
-		},
+		}
+	case "grpc":
+		check = GRPCCheck{
+			DeregisterCriticalServiceAfter: "10m",
+			GRPC:                           fmt.Sprintf("%s:%d", localUrl, port),
+			Interval:                       "30s",
+		}
+	}
+
+	register := ServiceRegisterInfo{
+		Name:  name,
+		Port:  port,
+		ID:    fmt.Sprintf("%v-%v", name, port),
+		Tags:  []string{"go"},
+		Check: check,
 	}
 	data, _ := json.Marshal(register)
 
@@ -86,12 +101,7 @@ func (this *ConsulService) Register(serviceName string, port int64) error {
 		return err
 	}
 
-	infos, err := this.GetServices(serviceName)
-	if err != nil {
-		return err
-	}
-
-	return g_consulCache.Set(serviceName, infos...)
+	return this.GetServicesToCache(name)
 }
 
 func (this *ConsulService) GetServices(serviceName string) ([]*ServiceInfo, error) {
@@ -113,8 +123,6 @@ func (this *ConsulService) GetServices(serviceName string) ([]*ServiceInfo, erro
 		for _, check := range info.Checks {
 			if serviceName == check.ServiceName && check.Status == "passing" {
 				validInfos = append(validInfos, &ServiceInfo{
-					ID:      info.Service.ID,
-					Name:    info.Service.Name,
 					Address: info.Node.Address,
 					Port:    info.Service.Port,
 					Tags:    info.Service.Tags,
@@ -122,5 +130,15 @@ func (this *ConsulService) GetServices(serviceName string) ([]*ServiceInfo, erro
 			}
 		}
 	}
-	return validInfos, err
+
+	return validInfos, nil
+}
+
+func (this *ConsulService) GetServicesToCache(serviceName string) error {
+	infos, err := this.GetServices(serviceName)
+	if err != nil {
+		return err
+	}
+
+	return g_consulCache.Set(serviceName, infos)
 }

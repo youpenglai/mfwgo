@@ -1,7 +1,6 @@
 package consul
 
 import (
-	"errors"
 	"log"
 	"sync"
 	"time"
@@ -12,7 +11,7 @@ type ConsulCache struct {
 	l  sync.Mutex
 }
 
-var g_consulCache = ConsulCache {
+var g_consulCache = ConsulCache{
 	kv: make(map[string]*ConsulCacheItem),
 }
 
@@ -27,17 +26,17 @@ func (c *ConsulCache) Get(key string) *ServiceInfo {
 	return v.Get()
 }
 
-func (c *ConsulCache) Set(key string, val... *ServiceInfo) error {
+func (c *ConsulCache) Set(key string, val []*ServiceInfo) error {
 	c.l.Lock()
 	defer c.l.Unlock()
 
 	item, exist := c.kv[key]
 	if !exist {
 		item = newConsulCacheItem(key)
+		c.kv[key] = item
 	}
-	c.kv[key] = item
 
-	return item.Set(val...)
+	return item.Set(val)
 }
 
 func (c *ConsulCache) IsExist(key string) bool {
@@ -67,17 +66,13 @@ func newConsulCacheItem(serviceName string) *ConsulCacheItem {
 	item.data = make([]*ServiceInfo, 0, 10)
 
 	go func() {
+		s := NewConsulService()
 		for {
 			time.Sleep(time.Minute * 30)
-			infos, err := NewConsulService().GetServices(serviceName)
-			if err != nil {
+			if err := s.GetServicesToCache(serviceName); err != nil {
 				log.Println(err.Error())
 				return
 			}
-
-			item.Clear()
-			item.Set(infos...)
-
 		}
 	}()
 	return item
@@ -86,6 +81,10 @@ func newConsulCacheItem(serviceName string) *ConsulCacheItem {
 func (c *ConsulCacheItem) Get() *ServiceInfo {
 	c.l.Lock()
 	defer c.l.Unlock()
+
+	if 0 == len(c.data) {
+		return nil
+	}
 
 	if c.n >= len(c.data) {
 		c.n = 0
@@ -96,14 +95,15 @@ func (c *ConsulCacheItem) Get() *ServiceInfo {
 	return c.data[count]
 }
 
-func (c *ConsulCacheItem) Set(val ...*ServiceInfo) error {
+func (c *ConsulCacheItem) Set(val []*ServiceInfo) error {
 	c.l.Lock()
 	defer c.l.Unlock()
 
-	c.data = append(c.data, val...)
+	c.data = val
 	return nil
 }
 
+/*
 func (c *ConsulCacheItem) IsExist(ID string) bool {
 	c.l.Lock()
 	defer c.l.Unlock()
@@ -134,10 +134,4 @@ func (c *ConsulCacheItem) Delete(ID string) error {
 
 	return errors.New("Not Found Service ID: " + ID)
 }
-
-func (c *ConsulCacheItem) Clear() {
-	c.l.Lock()
-	defer c.l.Unlock()
-
-	c.data = make([]*ServiceInfo, 0, 10)
-}
+*/
