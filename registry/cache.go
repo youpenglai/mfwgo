@@ -1,4 +1,4 @@
-package consul
+package registry
 
 import (
 	"log"
@@ -11,7 +11,7 @@ type ConsulCache struct {
 	l  sync.Mutex
 }
 
-var g_consulCache = ConsulCache{
+var gConsulCache = ConsulCache{
 	kv: make(map[string]*ConsulCacheItem),
 }
 
