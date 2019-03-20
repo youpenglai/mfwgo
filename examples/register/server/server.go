@@ -22,7 +22,7 @@ func main() {
 
 func httpDo(name string, address string, port int64, out chan<- error) {
 	err := RegisterService(ServiceRegistration{ServiceName: name, Port: port},
-		ServiceRegistrType{CheckHealth: CheckHealth{Type: "http"}})
+		ServiceRegisterType{CheckHealth: CheckHealth{Type: "http"}})
 	if err != nil {
 		out <- err
 		return
@@ -43,7 +43,7 @@ func (s *server) Check(ctx context.Context, in *pb.HealthCheckRequest) (*pb.Heal
 
 func grpcDo(name string, address string, port int64, out chan<- error) {
 	err := RegisterService(ServiceRegistration{ServiceName: name, Port: port},
-		ServiceRegistrType{CheckHealth: CheckHealth{Type: "grpc"}})
+		ServiceRegisterType{CheckHealth: CheckHealth{Type: "grpc"}})
 	if err != nil {
 		out <- err
 		return

@@ -29,6 +29,6 @@ func NewGRPCConn(serviceName string) (*GRPCClient, error) {
 	}, nil
 }
 
-func (this *GRPCClient) GetConn() *grpc.ClientConn {
-	return this.cc
+func (c *GRPCClient) GetConn() *grpc.ClientConn {
+	return c.cc
 }

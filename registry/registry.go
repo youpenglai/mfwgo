@@ -9,7 +9,7 @@ type ServiceRegistration struct {
 	Port        int64
 }
 
-type ServiceRegistrType struct {
+type ServiceRegisterType struct {
 	CheckHealth CheckHealth
 }
 
@@ -25,7 +25,7 @@ type ServiceInfo struct {
 	Tags    []string `json:"Tags"`
 }
 
-func RegisterService(serviceInfo ServiceRegistration, serviceType ServiceRegistrType) error {
+func RegisterService(serviceInfo ServiceRegistration, serviceType ServiceRegisterType) error {
 	return NewConsulService().Register(serviceInfo.ServiceName, serviceInfo.Port, serviceType.CheckHealth.Type)
 }
 

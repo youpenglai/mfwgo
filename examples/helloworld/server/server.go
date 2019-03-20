@@ -26,7 +26,7 @@ func (s *serverTest) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.Hel
 func main() {
 	// register service
 	err := RegisterService(ServiceRegistration{ServiceName: serviceName, Port: port},
-		ServiceRegistrType{CheckHealth: CheckHealth{Type: "grpc"}})
+		ServiceRegisterType{CheckHealth: CheckHealth{Type: "grpc"}})
 	if err != nil {
 		log.Fatalf("register service error: %v", err)
 	}
