@@ -3,12 +3,30 @@ package registry
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"strconv"
 )
 
-const (
+var (
 	consulIp   = "127.0.0.1"
 	consulPort = 8500
 )
+
+// 支持从环境变量中获取
+func initConsul() {
+	ip := os.Getenv("MFW_CONSUL_IP")
+	if ip != "" {
+		consulIp = ip
+	}
+	port := os.Getenv("MFW_CONSUL_PORT")
+	if port != "" {
+		v, e := strconv.ParseInt(port, 10, 32)
+		if e != nil {
+			return
+		}
+		consulPort = int(v)
+	}
+}
 
 const (
 	deregisterInterval = "10m"
@@ -141,4 +159,8 @@ func (c *ConsulService) GetServicesToCache(serviceName string) error {
 	}
 
 	return gConsulCache.Set(serviceName, infos)
+}
+
+func init() {
+	initConsul()
 }
