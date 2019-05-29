@@ -2,7 +2,7 @@ package client
 
 import (
 	"github.com/youpenglai/mfwgo/registry"
-	"golang.org/x/tools/go/ssa/interp/testdata/src/fmt"
+	"fmt"
 	"google.golang.org/grpc/resolver"
 )
 
