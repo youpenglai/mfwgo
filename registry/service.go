@@ -2,6 +2,7 @@ package registry
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -35,11 +36,12 @@ const (
 )
 
 type ServiceRegisterInfo struct {
-	ID    string      `json:"ID"`
-	Name  string      `json:"Name"`
-	Port  int64       `json:"Port"`
-	Tags  []string    `json:"Tags"`
-	Check interface{} `json:"Check"`
+	ID                string      `json:"ID"`
+	Name              string      `json:"Name"`
+	Port              int64       `json:"Port"`
+	Tags              []string    `json:"Tags"`
+	Check             interface{} `json:"Check"`
+	EnableTagOverride bool        `json:"EnableTagOverride"`
 }
 
 type HTTPCheck struct {
@@ -106,24 +108,29 @@ func (c *ConsulService) Register(name string, port int64, healthType string) err
 	}
 
 	register := ServiceRegisterInfo{
-		Name:  name,
-		Port:  port,
-		ID:    fmt.Sprintf("%v-%v", name, port),
-		Tags:  []string{tagGo},
-		Check: check,
+		Name:              name,
+		Port:              port,
+		ID:                fmt.Sprintf("%v-%v", name, port),
+		Tags:              []string{tagGo},
+		Check:             check,
+		EnableTagOverride: true,
 	}
 	data, _ := json.Marshal(register)
 
-	_, err := HttpPutWithHeader(url, headers, data)
+	errMsg, err := HttpPutWithHeader(url, headers, data)
 	if err != nil {
 		return err
+	}
+
+	if string(errMsg) != "" {
+		return errors.New(string(errMsg))
 	}
 
 	return c.GetServicesToCache(name)
 }
 
 func (c *ConsulService) GetServices(serviceName string) ([]*ServiceInfo, error) {
-	url := fmt.Sprintf("http://%s:%d/v1/health/service/%s", consulIp, consulPort, serviceName)
+	url := fmt.Sprintf("http://%s:%d/v1/health/service/%s?passing", consulIp, consulPort, serviceName)
 	headers := map[string]string{}
 
 	result, err := HttpGetWithHeader(url, headers)
@@ -136,17 +143,17 @@ func (c *ConsulService) GetServices(serviceName string) ([]*ServiceInfo, error) 
 		return nil, err
 	}
 
+	//if len(infos) == 0 {
+	//	return nil, errors.New("not found service: " + serviceName)
+	//}
+
 	var validInfos []*ServiceInfo
 	for _, info := range infos {
-		for _, check := range info.Checks {
-			if serviceName == check.ServiceName && check.Status == "passing" {
-				validInfos = append(validInfos, &ServiceInfo{
-					Address: info.Node.Address,
-					Port:    info.Service.Port,
-					Tags:    info.Service.Tags,
-				})
-			}
-		}
+		validInfos = append(validInfos, &ServiceInfo{
+			Address: info.Node.Address,
+			Port:    info.Service.Port,
+			Tags:    info.Service.Tags,
+		})
 	}
 
 	return validInfos, nil
