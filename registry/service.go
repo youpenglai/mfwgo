@@ -33,7 +33,6 @@ const (
 	deregisterInterval = "10m"
 	tagGo              = "go"
 	checkInterval      = "30s"
-	checkTTL           = "15s"
 )
 
 type ServiceRegisterInfo struct {
@@ -144,9 +143,9 @@ func (c *ConsulService) GetServices(serviceName string) ([]*ServiceInfo, error) 
 		return nil, err
 	}
 
-	if len(infos) == 0 {
-		return nil, errors.New("not found service: " + serviceName)
-	}
+	//if len(infos) == 0 {
+	//	return nil, errors.New("not found service: " + serviceName)
+	//}
 
 	var validInfos []*ServiceInfo
 	for _, info := range infos {
