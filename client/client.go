@@ -36,14 +36,11 @@ func NewGRPCConn(serviceName string) (*GRPCClient, error) {
 
 	client := GRPCClient{
 		cc: cc,
-		ch: make(chan bool, 1),
+		ch: make(chan bool),
 	}
 
 	go func() {
-		ticker := time.NewTicker(grpcStateCheckTime)
-		defer ticker.Stop()
-
-		for ; ; <-ticker.C {
+		for range time.Tick(grpcStateCheckTime) {
 			switch client.cc.GetState() {
 			case connectivity.Idle, connectivity.TransientFailure:
 				cc, err := reConnect(serviceName)
